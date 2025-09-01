@@ -4,7 +4,7 @@ import * as Location from 'expo-location';
 import axios from 'axios';
 
 const BUS_ID = "42"; // each bus/driver gets a unique ID
-const BACKEND_URL = "http://192.168.29.178:4000"; // 👈 change to your PC IP
+const BACKEND_URL = "http://tracker-backend-production-b041.up.railway.app"; // 👈 change to your PC IP
 
 export default function App() {
 

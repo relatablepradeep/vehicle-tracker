@@ -21,7 +21,7 @@
 
     <script>
       // ✅ Backend URL
-      const backendUrl = "http://192.168.29.178:4000";
+      const backendUrl = "tracker-backend-production-b041.up.railway.app";
 
       // fallback sample location (Dehradun)
       const fallback = { busId: "sample", lat: 30.3077905, lng: 78.0719938 };
@@ -76,7 +76,7 @@
 
       // run once + refresh every 5s
       fetchBuses();
-      setInterval(fetchBuses, 5000);
+      setInterval(fetchBuses, 20000);
     </script>
   </body>
 </html>
