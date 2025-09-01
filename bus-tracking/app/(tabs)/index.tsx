@@ -4,7 +4,7 @@ import * as Location from 'expo-location';
 import axios from 'axios';
 
 const BUS_ID = "42"; // each bus/driver gets a unique ID
-const BACKEND_URL = "vehicle-tracker-production-00ee.up.railway.app"; 
+const BACKEND_URL = "https://vehicle-tracker-production-00ee.up.railway.app"; 
 
 export default function App() {
 

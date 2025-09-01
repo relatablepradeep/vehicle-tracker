@@ -21,7 +21,7 @@
 
     <script>
       // ✅ change to your backend IP if needed
-      const backendUrl = "vehicle-tracker-production-00ee.up.railway.app";
+      const backendUrl = "https://vehicle-tracker-production-00ee.up.railway.app";
      
 
       // fallback sample location
@@ -43,7 +43,7 @@
 
    async function fetchBuses() {
   try {
-    const res = await fetch("vehicle-tracker-production-00ee.up.railway.app/buses");
+    const res = await fetch("https://vehicle-tracker-production-00ee.up.railway.app/buses");
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     const buses = await res.json();
     console.log("🚍 Buses from backend:", buses);
@@ -85,7 +85,7 @@
       }
 
 
-      const res = await fetch("vehicle-tracker-production-00ee.up.railway.app/buses");
+      const res = await fetch("https://vehicle-tracker-production-00ee.up.railway.app/buses");
 console.log(await res.json());
 
 
