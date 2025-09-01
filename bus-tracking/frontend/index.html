@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Bus Tracker</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet/dist/leaflet.css"
+    />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+      #map {
+        height: 100vh;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+
+    <script>
+      // ✅ change to your backend IP if needed
+      const backendUrl = "http://192.168.29.178:4000";
+     
+
+      // fallback sample location
+      const fallback = { busId: "sample", lat: 30.3077905, lng: 78.0719938 };
+
+      // setup map
+      const map = L.map("map").setView([fallback.lat, fallback.lng], 13);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap",
+      }).addTo(map);
+
+      // store markers
+      let markers = {};
+
+
+
+
+
+
+   async function fetchBuses() {
+  try {
+    const res = await fetch("http://192.168.29.178:4000/buses");
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    const buses = await res.json();
+    console.log("🚍 Buses from backend:", buses);
+
+    if (buses.length > 0) {
+      const bus = buses[0];
+      L.marker([bus.lat, bus.lng]).addTo(map)
+        .bindPopup(`Bus ${bus.busId}`)
+        .openPopup();
+      map.setView([bus.lat, bus.lng], 15);
+    } else {
+      console.warn("⚠️ No buses found, using fallback location");
+      map.setView([30.3077905, 78.0719938], 13);
+    }
+  } catch (err) {
+    console.error("❌ Error fetching buses:", err.message);
+    console.warn("⚠️ Showing fallback location instead");
+    map.setView([30.3077905, 78.0719938], 13);
+  }
+}
+
+
+
+
+
+
+
+
+      function updateMarkers(buses) {
+        buses.forEach((bus) => {
+          const { busId, lat, lng } = bus;
+          if (markers[busId]) {
+            markers[busId].setLatLng([lat, lng]);
+          } else {
+            markers[busId] = L.marker([lat, lng]).addTo(map).bindPopup(`Bus ${busId}`);
+          }
+          map.setView([lat, lng], 15); // recenters map
+        });
+      }
+
+
+      const res = await fetch("http://localhost:4000/buses");
+console.log(await res.json());
+
+
+
+
+      
+      fetchBuses(); 
+setInterval(() => {
+  fetchBuses();
+}, 5000);
+    </script>
+  </body>
+</html>
