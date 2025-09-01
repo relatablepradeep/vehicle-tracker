@@ -1,27 +1,27 @@
 import React, { useEffect } from 'react';
-import { View, Text, Button, StyleSheet } from 'react-native';
+import { View, Text, Button, StyleSheet, Platform } from 'react-native';
 import * as Location from 'expo-location';
 import axios from 'axios';
 
-const BUS_ID = "42"; // each bus/driver gets a unique ID
-const BACKEND_URL = "https://vehicle-tracker-production-00ee.up.railway.app"; 
+const BUS_ID = "42"; 
+const BACKEND_URL = "https://vehicle-tracker-production-00ee.up.railway.app"; // use your deployed URL
 
 export default function App() {
 
   const startTracking = async () => {
-    // Ask permission
+    if (Platform.OS === 'web') return; // skip web
+
     let { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
       alert('Permission denied');
       return;
     }
 
-    // Watch location
-    await Location.watchPositionAsync(
+    Location.watchPositionAsync(
       {
         accuracy: Location.Accuracy.High,
-        timeInterval: 60000, // every 60s
-        distanceInterval: 50 // or every 50 meters
+        timeInterval: 60000, // 1 min
+        distanceInterval: 50 // 50 meters
       },
       (loc) => {
         const { latitude, longitude } = loc.coords;
@@ -29,19 +29,21 @@ export default function App() {
         sendToServer(latitude, longitude);
       }
     );
+
+    console.log("🚀 Location tracking started");
   };
 
-  const sendToServer = async (lat, lng) => {
+  const sendToServer = async (lat: number, lng: number) => {
     try {
-      const res = await axios.post(`${BACKEND_URL}/bus/location`, {
+      const res = await axios.post(`${BACKEND_URL}/bus`, {
         busId: BUS_ID,
         lat,
         lng,
         timestamp: new Date().toISOString()
       });
       console.log("Sent:", res.data);
-    } catch (err) {
-      console.log("Error:", err.message);
+    } catch (err: any) {
+      console.log("ERROR sending location:", err.message);
     }
   };
 
