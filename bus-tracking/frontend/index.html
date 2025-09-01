@@ -4,30 +4,37 @@
     <title>Bus Tracker</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet/dist/leaflet.css"
+    />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <style>
-      #map { height: 100vh; width: 100%; }
+      #map {
+        height: 100vh;
+        width: 100%;
+      }
     </style>
   </head>
   <body>
     <div id="map"></div>
 
     <script>
-      const backendUrl = "https://vehicle-tracker-production-00ee.up.railway.app";
+      // ✅ Backend URL
+      const backendUrl = "http://192.168.29.178:4000";
 
+      // fallback sample location (Dehradun)
       const fallback = { busId: "sample", lat: 30.3077905, lng: 78.0719938 };
 
-      // Initialize map
+      // setup map
       const map = L.map("map").setView([fallback.lat, fallback.lng], 13);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenStreetMap",
       }).addTo(map);
 
-      // Store markers per busId
+      // store markers
       let markers = {};
 
-      // Fetch buses and update markers
       async function fetchBuses() {
         try {
           const res = await fetch(`${backendUrl}/buses`);
@@ -35,36 +42,40 @@
           const buses = await res.json();
           console.log("🚍 Buses from backend:", buses);
 
-          if (buses.length === 0) {
+          if (buses.length > 0) {
+            updateMarkers(buses);
+          } else {
             console.warn("⚠️ No buses found, using fallback location");
             map.setView([fallback.lat, fallback.lng], 13);
-            return;
           }
-
-          buses.forEach(bus => {
-            const { busId, lat, lng } = bus;
-            if (markers[busId]) {
-              markers[busId].setLatLng([lat, lng]);
-            } else {
-              markers[busId] = L.marker([lat, lng]).addTo(map)
-                .bindPopup(`Bus ${busId}`);
-            }
-          });
-
-          // Optional: center map on first bus
-          const firstBus = buses[0];
-          map.setView([firstBus.lat, firstBus.lng], 15);
-
         } catch (err) {
           console.error("❌ Error fetching buses:", err.message);
+          console.warn("⚠️ Showing fallback location instead");
           map.setView([fallback.lat, fallback.lng], 13);
         }
       }
 
-      // Initial fetch
-      fetchBuses();
+      function updateMarkers(buses) {
+        buses.forEach((bus) => {
+          const { busId, lat, lng } = bus;
 
-      // Refresh every 5 seconds
+          if (markers[busId]) {
+            // update position if marker exists
+            markers[busId].setLatLng([lat, lng]);
+          } else {
+            // create new marker
+            markers[busId] = L.marker([lat, lng])
+              .addTo(map)
+              .bindPopup(`Bus ${busId}`);
+          }
+
+          // ✅ recenter map on this bus
+          map.setView([lat, lng], 15);
+        });
+      }
+
+      // run once + refresh every 5s
+      fetchBuses();
       setInterval(fetchBuses, 5000);
     </script>
   </body>
