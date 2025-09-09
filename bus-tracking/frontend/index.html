@@ -4,77 +4,418 @@
     <title>Bus Tracker</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link
       rel="stylesheet"
-      href="https://unpkg.com/leaflet/dist/leaflet.css"
+      href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"
     />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
     <style>
-      #map {
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        display: flex;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: #fafafa;
+        color: #1f2937;
         height: 100vh;
-        width: 100%;
+      }
+
+      #sidebar {
+        width: 320px;
+        height: 100vh;
+        overflow-y: auto;
+        background: white;
+        border-right: 1px solid #e5e7eb;
+        padding: 24px;
+      }
+
+      .header {
+        margin-bottom: 32px;
+      }
+
+      .title {
+        font-size: 20px;
+        font-weight: 600;
+        color: #111827;
+        margin: 0 0 4px 0;
+      }
+
+      .subtitle {
+        font-size: 14px;
+        color: #6b7280;
+        margin: 0;
+      }
+
+      .stats {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+
+      .stat {
+        flex: 1;
+        background: #f9fafb;
+        padding: 16px;
+        border-radius: 8px;
+        text-align: center;
+        border: 1px solid #f3f4f6;
+      }
+
+      .stat-number {
+        font-size: 24px;
+        font-weight: 600;
+        color: #3b82f6;
+        margin-bottom: 4px;
+      }
+
+      .stat-label {
+        font-size: 12px;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .bus-item {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .bus-item:hover {
+        border-color: #3b82f6;
+        box-shadow: 0 1px 3px rgba(59, 130, 246, 0.1);
+      }
+
+      .bus-item.active {
+        border-color: #3b82f6;
+        background: #eff6ff;
+      }
+
+      .bus-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .bus-id {
+        font-size: 16px;
+        font-weight: 500;
+        color: #111827;
+      }
+
+      .bus-status {
+        background: #10b981;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+      }
+
+      .bus-info {
+        margin-top: 16px;
+        padding: 16px;
+        background: #f8fafc;
+        border-radius: 6px;
+        border-left: 3px solid #3b82f6;
+      }
+
+      .info-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-size: 14px;
+      }
+
+      .info-item:last-child {
+        margin-bottom: 0;
+      }
+
+      .info-label {
+        color: #6b7280;
+        font-weight: 400;
+      }
+
+      .info-value {
+        font-weight: 500;
+        color: #111827;
+      }
+
+      .complaint {
+        color: #dc2626 !important;
+      }
+
+      #map {
+        flex: 1;
+        height: 100vh;
+      }
+
+      .person-icon {
+        background: none;
+        border: none;
+        font-size: 24px;
+        text-align: center;
+        line-height: 1;
+      }
+
+      /* Simple scrollbar */
+      #sidebar::-webkit-scrollbar {
+        width: 4px;
+      }
+
+      #sidebar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      #sidebar::-webkit-scrollbar-thumb {
+        background: #d1d5db;
+        border-radius: 2px;
+      }
+
+      #sidebar::-webkit-scrollbar-thumb:hover {
+        background: #9ca3af;
+      }
+
+      .loading {
+        text-align: center;
+        padding: 32px;
+        color: #6b7280;
       }
     </style>
   </head>
+
   <body>
+    <div id="sidebar">
+      <div class="header">
+        <h1 class="title">🚌 Bus Tracker</h1>
+        <p class="subtitle">Real-time locations</p>
+      </div>
+      
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-number" id="active-buses">2</div>
+          <div class="stat-label">Active</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number" id="total-routes">4</div>
+          <div class="stat-label">Routes</div>
+        </div>
+      </div>
+      
+      <div id="bus-list"></div>
+    </div>
+
     <div id="map"></div>
 
     <script>
-      // ✅ Backend URL
       const backendUrl = "https://tracker-backend-production-b041.up.railway.app";
-
-      // fallback sample location (Dehradun)
       const fallback = { busId: "sample", lat: 30.3077905, lng: 78.0719938 };
 
-      // setup map
+      const fixedLocations = [
+        { name: "Bus Adda", lat: 30.298056, lng: 78.068611 },
+        { name: "6 no", lat: 30.2993748, lng: 78.0746318 },
+        { name: "KV OLF", lat: 30.2995265, lng: 78.0868376 },
+        { name: "Raipur", lat: 30.3086252, lng: 78.0995207 },
+      ];
+
+      const defaultRouteWaypoints = [
+        L.latLng(30.298056, 78.068611),
+        L.latLng(30.2993748, 78.0746318),
+        L.latLng(30.2995265, 78.0868376),
+        L.latLng(30.3086252, 78.0995207),
+      ];
+
+      const secondBusWaypoints = [
+        L.latLng(30.303662, 78.052850),
+        L.latLng(30.307078, 78.076279),
+        L.latLng(30.293437, 78.075162),
+        L.latLng(30.286475, 78.065917),
+      ];
+
       const map = L.map("map").setView([fallback.lat, fallback.lng], 13);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenStreetMap",
       }).addTo(map);
 
-      // store markers
+      const personIcon = L.divIcon({
+        html: "🧑‍💼",
+        className: "person-icon",
+        iconSize: [30, 30],
+        iconAnchor: [15, 15],
+        popupAnchor: [0, -15],
+      });
+
+      L.marker([fallback.lat, fallback.lng], { icon: personIcon })
+        .addTo(map)
+        .bindPopup("Pradeep")
+        .openPopup();
+
+      fixedLocations.forEach((location) => {
+        L.marker([location.lat, location.lng])
+          .addTo(map)
+          .bindPopup(location.name)
+          .openPopup();
+      });
+
       let markers = {};
+      let activeRouteControl = null;
+      let expandedBusId = null;
 
       async function fetchBuses() {
         try {
           const res = await fetch(`${backendUrl}/buses`);
           if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-          const buses = await res.json();
-          console.log("🚍 Buses from backend:", buses);
+          let buses = await res.json();
 
-          if (buses.length > 0) {
-            updateMarkers(buses);
-          } else {
-            console.warn("⚠️ No buses found, using fallback location");
-            map.setView([fallback.lat, fallback.lng], 13);
+          const hasBus2 = buses.some((bus) => bus.busId === "bus2");
+          if (!hasBus2) {
+            buses.push({
+              busId: "bus2",
+              lat: 30.303662,
+              lng: 78.052850,
+            });
           }
+
+          updateMarkers(buses);
+          updateSidebar(buses);
+          updateStats(buses);
         } catch (err) {
-          console.error("❌ Error fetching buses:", err.message);
-          console.warn("⚠️ Showing fallback location instead");
-          map.setView([fallback.lat, fallback.lng], 13);
+          console.error("Error fetching buses:", err.message);
+
+          const buses = [
+            { busId: "bus1", lat: fallback.lat, lng: fallback.lng },
+            { busId: "bus2", lat: 30.303662, lng: 78.052850 },
+          ];
+
+          updateMarkers(buses);
+          updateSidebar(buses);
+          updateStats(buses);
         }
       }
 
+      function updateStats(buses) {
+        document.getElementById('active-buses').textContent = buses.length;
+      }
+
       function updateMarkers(buses) {
+        const bounds = fixedLocations.map((loc) => [loc.lat, loc.lng]);
+        bounds.push([fallback.lat, fallback.lng]);
+
         buses.forEach((bus) => {
           const { busId, lat, lng } = bus;
 
           if (markers[busId]) {
-            // update position if marker exists
             markers[busId].setLatLng([lat, lng]);
           } else {
-            // create new marker
             markers[busId] = L.marker([lat, lng])
               .addTo(map)
               .bindPopup(`Bus ${busId}`);
           }
 
-          // ✅ recenter map on this bus
-          map.setView([lat, lng], 15);
+          bounds.push([lat, lng]);
+        });
+
+        map.fitBounds(bounds, { padding: [50, 50] });
+      }
+
+      function toggleBusRoute(busId, busItem) {
+        document.querySelectorAll('.bus-item').forEach(item => {
+          item.classList.remove('active');
+        });
+
+        if (expandedBusId === busId) {
+          if (activeRouteControl) {
+            map.removeControl(activeRouteControl);
+            activeRouteControl = null;
+          }
+          expandedBusId = null;
+
+          const infoBox = busItem.querySelector(".bus-info");
+          if (infoBox) infoBox.remove();
+        } else {
+          if (activeRouteControl) {
+            map.removeControl(activeRouteControl);
+            activeRouteControl = null;
+          }
+
+          busItem.classList.add('active');
+
+          let waypointsToUse = defaultRouteWaypoints;
+          if (busId === "bus2") {
+            waypointsToUse = secondBusWaypoints;
+          }
+
+          activeRouteControl = L.Routing.control({
+            waypoints: waypointsToUse,
+            routeWhileDragging: false,
+            show: false,
+            addWaypoints: false,
+            draggableWaypoints: false,
+          }).addTo(map);
+
+          expandedBusId = busId;
+
+          document.querySelectorAll(".bus-info").forEach((el) => el.remove());
+
+          const infoBox = document.createElement("div");
+          infoBox.className = "bus-info";
+          infoBox.innerHTML = `
+            <div class="info-item">
+              <span class="info-label">Driver:</span>
+              <span class="info-value">Ravi Kumar</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Destination:</span>
+              <span class="info-value">Raipur</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Status:</span>
+              <span class="info-value complaint">Engine overheating</span>
+            </div>
+          `;
+          busItem.appendChild(infoBox);
+        }
+      }
+
+      function updateSidebar(buses) {
+        const container = document.getElementById("bus-list");
+        container.innerHTML = "";
+
+        if (buses.length === 0) {
+          container.innerHTML = '<div class="loading">Loading buses...</div>';
+          return;
+        }
+
+        buses.forEach((bus) => {
+          const busItem = document.createElement("div");
+          busItem.className = "bus-item";
+          
+          busItem.innerHTML = `
+            <div class="bus-header">
+              <div class="bus-id">Bus ${bus.busId.toUpperCase()}</div>
+              <div class="bus-status">Online</div>
+            </div>
+          `;
+
+          busItem.addEventListener("click", () => {
+            toggleBusRoute(bus.busId, busItem);
+          });
+
+          container.appendChild(busItem);
         });
       }
 
-      // run once + refresh every 5s
       fetchBuses();
       setInterval(fetchBuses, 20000);
     </script>
